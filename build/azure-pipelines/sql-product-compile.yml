@@ -5,13 +5,11 @@ steps:
     echo -n $VSCODE_QUALITY > .build/quality
   displayName: Prepare cache flag
 
-- task: 1ESLighthouseEng.PipelineArtifactCaching.RestoreCacheV1.RestoreCache@1
+- task: Cache@2
   inputs:
-    keyfile: 'build/.cachesalt, .build/commit, .build/quality'
-    targetfolder: '.build, out-build, out-vscode-min, out-vscode-reh-min, out-vscode-reh-web-min'
-    vstsFeed: 'BuildCache'
-    platformIndependent: true
-    alias: 'Compilation'
+    key: 'build/.cachesalt, .build/commit, .build/quality'
+    path: '.build, out-build, out-vscode-min, out-vscode-reh-min, out-vscode-reh-web-min'
+    cacheHitVar: CacheRestored-Compilation
 
 - task: NodeTool@0
   inputs:
@@ -49,23 +47,16 @@ steps:
   displayName: Merge distro
   condition: and(succeeded(), ne(variables['CacheRestored-Compilation'], 'true'))
 
-- task: 1ESLighthouseEng.PipelineArtifactCaching.RestoreCacheV1.RestoreCache@1
+- task: Cache@2
   inputs:
-    keyfile: 'build/.cachesalt, .yarnrc, remote/.yarnrc, **/yarn.lock, !**/node_modules/**/yarn.lock, !**/.*/**/yarn.lock, !samples/**/yarn.lock'
-    targetfolder: '**/node_modules, !**/node_modules/**/node_modules, !samples/**/node_modules'
-    vstsFeed: 'BuildCache'
+    key: 'build/.cachesalt, .yarnrc, remote/.yarnrc, **/yarn.lock, !**/node_modules/**/yarn.lock, !**/.*/**/yarn.lock, !samples/**/yarn.lock'
+    path: '**/node_modules, !**/node_modules/**/node_modules, !samples/**/node_modules'
+    cacheHitVar: CacheRestored
 
 - script: |
     set -e
     CHILD_CONCURRENCY=1 yarn --frozen-lockfile
   displayName: Install dependencies
-  condition: and(succeeded(), ne(variables['CacheRestored'], 'true'))
-
-- task: 1ESLighthouseEng.PipelineArtifactCaching.SaveCacheV1.SaveCache@1
-  inputs:
-    keyfile: 'build/.cachesalt, .yarnrc, remote/.yarnrc, **/yarn.lock, !**/node_modules/**/yarn.lock, !**/.*/**/yarn.lock, !samples/**/yarn.lock'
-    targetfolder: '**/node_modules, !**/node_modules/**/node_modules, !samples/**/node_modules'
-    vstsFeed: 'BuildCache'
   condition: and(succeeded(), ne(variables['CacheRestored'], 'true'))
 
 - script: |
@@ -121,12 +112,3 @@ steps:
 
 - task: PublishBuildArtifacts@1
   displayName: 'Publish Artifact: drop'
-
-- task: 1ESLighthouseEng.PipelineArtifactCaching.SaveCacheV1.SaveCache@1
-  inputs:
-    keyfile: 'build/.cachesalt, .build/commit, .build/quality'
-    targetfolder: '.build, out-build, out-vscode-min, out-vscode-reh-min, out-vscode-reh-web-min'
-    vstsFeed: 'BuildCache'
-    platformIndependent: true
-    alias: 'Compilation'
-  condition: and(succeeded(), ne(variables['CacheRestored-Compilation'], 'true'))
